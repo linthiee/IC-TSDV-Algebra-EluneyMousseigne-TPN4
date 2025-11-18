@@ -1,7 +1,8 @@
 ﻿#include "raylib.h"
 #include "raymath.h"
-
 #include <vector>
+#include <string>
+#include <cmath>
 
 struct Plane
 {
@@ -11,7 +12,7 @@ struct Plane
 
 struct Frustum
 {
-	Plane planes[6]; // izquierda, derecha, abajo, arriba, near, far
+	Plane planes[6];
 };
 
 struct MyAABB
@@ -28,20 +29,19 @@ struct SceneObject
 	bool isVisible;
 };
 
+bool IsAABBInFrustum(Frustum& frustum, MyAABB& aabb);
+void UpdateFrustum(Frustum& frustum, Camera camera, float aspect, float nearDist, float farDist);
 MyAABB CalculateLocalAABB(Mesh mesh);
 MyAABB GetUpdatedAABB(MyAABB localBB, Matrix transform);
-void NormalizePlane(Plane* plane);
 void DrawAABB(MyAABB aabb, Color color);
-bool IsAABBInFrustum(Frustum& frustum, MyAABB& aabb);
-void ExtractFrustumPlanes(Frustum* frustum, Matrix viewProjection);
 
-const int objectsQuant = 50;
-
-void main()
+int main()
 {
-	SceneObject objects[objectsQuant];
+	const int screenWidth = 1600;
+	const int screenHeight = 900;
 
-	Frustum cameraFrustum;
+	InitWindow(screenWidth, screenHeight, "Frustum Culling");
+	SetWindowState(FLAG_WINDOW_RESIZABLE);
 
 	Camera camera = { 0 };
 	camera.position = { 20.0f, 15.0f, 20.0f };
@@ -50,56 +50,32 @@ void main()
 	camera.fovy = 45.0f;
 	camera.projection = CAMERA_PERSPECTIVE;
 
-	float nearPlane = 0.1f;
+	float nearPlane = 2.5f;
 	float farPlane = 50.0f;
 
 	std::vector<SceneObject> sceneObjects;
+	Frustum cameraFrustum;
 
-	InitWindow(800, 600, "Frustum Culling");
+	SceneObject obj1;
+	obj1.model = LoadModel("res/decahedron.obj");
+	obj1.position = { 5.0f, 5.0f, 5.0f };
+	obj1.aabb = CalculateLocalAABB(*obj1.model.meshes);
+	sceneObjects.push_back(obj1);
 
-	objects[0].model = LoadModel("res/decahedron.obj");
-	objects[0].position = { 5.0f, 5.0f, 5.0f };
-	objects[0].isVisible = true;
-	objects[0].aabb = CalculateLocalAABB(*objects[0].model.meshes);
+	SceneObject obj2;
+	obj2.model = LoadModel("res/dodecahedron.obj");
+	obj2.position = { 3.0f, 2.0f, 0.0f };
+	obj2.aabb = CalculateLocalAABB(*obj2.model.meshes);
+	sceneObjects.push_back(obj2);
 
-	sceneObjects.push_back(objects[0]);
-
-	objects[1].model = LoadModel("res/dodecahedron.obj");
-	objects[1].position = { 3.0f, 2.0f, 0.0f };
-	objects[1].isVisible = true;
-	objects[1].aabb = CalculateLocalAABB(*objects[1].model.meshes);
-
-	sceneObjects.push_back(objects[1]);
-
-	objects[2].model = LoadModel("res/icosahedron.obj");
-	objects[2].position = { 5.0f, 0.0f, 1.0f };
-	objects[2].isVisible = true;
-	objects[2].aabb = CalculateLocalAABB(*objects[2].model.meshes);
-
-	sceneObjects.push_back(objects[2]);
-
-	objects[3].model = LoadModel("res/octahedron.obj");
-	objects[3].position = { 0.0f, 5.0f, 0.0f };
-	objects[3].isVisible = true;
-	objects[3].aabb = CalculateLocalAABB(*objects[3].model.meshes);
-
-	sceneObjects.push_back(objects[3]);
-
-	objects[4].model = LoadModel("res/tetrahedron.obj");
-	objects[4].position = { 0.0f, 0.0f, 0.0f };
-	objects[4].isVisible = true;
-	objects[4].aabb = CalculateLocalAABB(*objects[4].model.meshes);
-
-	//for (int i = 0; i < 50; i++)
-	//{
-	//	objects[i].model = LoadModel("res/tetrahedron.obj");
-	//	objects[i].position = { (float)(rand() % 100 - 50), 0.0f, (float)(rand() % 100 - 50)  };
-	//	objects[i].isVisible = true;
-	//	objects[i].aabb = CalculateLocalAABB(*objects[i].model.meshes);
-	//	sceneObjects.push_back(objects[i]);
-	//}
-
-	sceneObjects.push_back(objects[4]);
+	for (int i = 0; i < 50; i++)
+	{
+		SceneObject objRand;
+		objRand.model = LoadModel("res/tetrahedron.obj");
+		objRand.position = { (float)(GetRandomValue(-50, 50)), 0.0f, (float)(GetRandomValue(-50, 50)) };
+		objRand.aabb = CalculateLocalAABB(*objRand.model.meshes);
+		sceneObjects.push_back(objRand);
+	}
 
 	DisableCursor();
 
@@ -107,30 +83,53 @@ void main()
 	{
 		UpdateCamera(&camera, CAMERA_FREE);
 
-		float fov = camera.fovy * DEG2RAD;
-		float aspectRatio = (float)GetScreenWidth() / (float)GetScreenHeight();
-		Matrix view = GetCameraMatrix(camera);
-		Matrix projection = MatrixPerspective(fov, aspectRatio, nearPlane, farPlane);
-		Matrix viewProjection = MatrixMultiply(view, projection);
+		if (IsKeyPressed(KEY_Q))
+		{
+			camera.fovy += 2.0f;
+		}
+		if (IsKeyPressed(KEY_E))
+		{
+			camera.fovy -= 2.0f;
+		}
+		camera.fovy = Clamp(camera.fovy, 1.0f, 180.0f);
 
-		ExtractFrustumPlanes(&cameraFrustum, viewProjection);
+		if (IsKeyPressed(KEY_R))
+		{
+			nearPlane++;
+		}
+		if (IsKeyPressed(KEY_F))
+		{
+			nearPlane--;
+		}
+		nearPlane = Clamp(nearPlane, 0.0f, farPlane - 1.0f);
+
+		if (IsKeyPressed(KEY_T))
+		{
+			farPlane++;
+		}
+		if (IsKeyPressed(KEY_G))
+		{
+			farPlane--;
+		}
+		farPlane = Clamp(farPlane, nearPlane + 1.0f, farPlane);
+
+		float aspectRatio = (float)GetScreenWidth() / (float)GetScreenHeight();
+
+		UpdateFrustum(cameraFrustum, camera, aspectRatio, nearPlane, farPlane);
+
+		int visibleCount = 0;
 
 		for (int i = 0; i < sceneObjects.size(); i++)
 		{
-			Matrix transform = MatrixTranslate(sceneObjects[i].position.x, sceneObjects[i].position.y, sceneObjects[i].position.z);
-
-			MyAABB worldAABB = GetUpdatedAABB(sceneObjects[i].aabb, transform);
+			Matrix matTranslate = MatrixTranslate(sceneObjects[i].position.x, sceneObjects[i].position.y, sceneObjects[i].position.z);
+			MyAABB worldAABB = GetUpdatedAABB(sceneObjects[i].aabb, matTranslate);
 
 			sceneObjects[i].isVisible = IsAABBInFrustum(cameraFrustum, worldAABB);
-		}
 
-		if (IsKeyPressed(KEY_P))
-		{
-			camera.fovy += 5.0f;
-		}
-		if (IsKeyPressed(KEY_L))
-		{
-			camera.fovy -= 5.0f;
+			if (sceneObjects[i].isVisible)
+			{
+				visibleCount++;
+			}
 		}
 
 		BeginDrawing();
@@ -138,55 +137,134 @@ void main()
 
 		BeginMode3D(camera);
 
+		DrawGrid(100, 1.0f);
+
 		for (int i = 0; i < sceneObjects.size(); i++)
 		{
+			Matrix matTranslate = MatrixTranslate(sceneObjects[i].position.x, sceneObjects[i].position.y, sceneObjects[i].position.z);
+			MyAABB worldAABB = GetUpdatedAABB(sceneObjects[i].aabb, matTranslate);
+
 			if (sceneObjects[i].isVisible)
 			{
 				DrawModel(sceneObjects[i].model, sceneObjects[i].position, 1.0f, RED);
 				DrawModelWires(sceneObjects[i].model, sceneObjects[i].position, 1.0f, MAROON);
-
-				MyAABB worldAABB = GetUpdatedAABB(sceneObjects[i].aabb, MatrixTranslate(sceneObjects[i].position.x, sceneObjects[i].position.y, sceneObjects[i].position.z));
 				DrawAABB(worldAABB, BLUE);
 			}
 			else
 			{
 				DrawModelWires(sceneObjects[i].model, sceneObjects[i].position, 1.0f, LIGHTGRAY);
-				MyAABB worldAABB = GetUpdatedAABB(sceneObjects[i].aabb, MatrixTranslate(sceneObjects[i].position.x, sceneObjects[i].position.y, sceneObjects[i].position.z));
 				DrawAABB(worldAABB, GRAY);
 			}
 		}
 
-		DrawGrid(20, 1.0f);
 		EndMode3D();
 
-		int visibleCount = 0;
-		for (int i = 0; i < sceneObjects.size(); i++)
-		{
-			if (sceneObjects[i].isVisible) visibleCount++;
-		}
 		DrawText(TextFormat("Visible objects: %d/%d", visibleCount, sceneObjects.size()), 10, 10, 20, BLACK);
+		DrawText("WASD to Move, Mouse to Look, Q/E to Change FOV", 10, 35, 15, DARKGRAY);
+		DrawText("R/F to Change NearPlane, T/G to Change FarPlane", 10, 55, 15, DARKGRAY);
+
+		DrawText("FOV:", 10, 80, 15, DARKGRAY);
+		DrawText(TextFormat("%s", std::to_string((int)camera.fovy).c_str()), 50, 80, 15, BLACK);
+		DrawText("Planes:", 10, 95, 15, DARKGRAY);
+		DrawText(TextFormat("%s", std::to_string((int)nearPlane).c_str()), 10, 125, 15, BLACK);
+		DrawText(TextFormat("%s", std::to_string((int)farPlane).c_str()), 10, 150, 15, BLACK);
 
 		EndDrawing();
 	}
 
+	for (int i = 0; i < sceneObjects.size() - 1; i++)
+	{
+		SceneObject& obj = sceneObjects[i];
+		if (IsModelValid(obj.model)) 
+		{
+			UnloadModel(obj.model);
+		}
+	}
+
+	CloseWindow();
+
+	return 0;
 }
 
-void DrawAABB(MyAABB aabb, Color color)
+bool IsAABBInFrustum(Frustum& frustum, MyAABB& aabb)
 {
-	Vector3 size =
+	for (int i = 0; i < 6; i++)
 	{
-		aabb.max.x - aabb.min.x,
-		aabb.max.y - aabb.min.y,
-		aabb.max.z - aabb.min.z
-	};
-	Vector3 center =
-	{
-		aabb.min.x + size.x * 0.5f,
-		aabb.min.y + size.y * 0.5f,
-		aabb.min.z + size.z * 0.5f
-	};
+		Vector3 vertex;
 
-	DrawCubeWiresV(center, size, color);
+		if (frustum.planes[i].normal.x > 0)
+		{
+			vertex.x = aabb.max.x;
+		}
+		else 
+		{
+			vertex.x = aabb.min.x;
+		}
+
+		if (frustum.planes[i].normal.y > 0)
+		{
+			vertex.y = aabb.max.y;
+		}
+		else
+		{
+			vertex.y = aabb.min.y;
+		}
+
+		if (frustum.planes[i].normal.z > 0)
+		{
+			vertex.z = aabb.max.z;
+		}
+		else 
+		{
+			vertex.z = aabb.min.z;
+		}
+
+		if ((Vector3DotProduct(frustum.planes[i].normal, vertex) + frustum.planes[i].distance) < 0)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+void UpdateFrustum(Frustum& frustum, Camera camera, float aspect, float nearDist, float farDist)
+{
+	Vector3 forward = Vector3Subtract(camera.target, camera.position);
+	forward = Vector3Normalize(forward);
+
+	Vector3 right = Vector3CrossProduct(forward, camera.up);
+	right = Vector3Normalize(right);
+
+	Vector3 up = Vector3CrossProduct(right, forward);
+
+	float halfHeight = tanf(camera.fovy * 0.5f * DEG2RAD);
+	float halfWidth = halfHeight * aspect;
+
+	Vector3 topSlope = Vector3Add(forward, Vector3Scale(up, halfHeight));
+	frustum.planes[3].normal = Vector3Normalize(Vector3CrossProduct(topSlope, right)); // plano arriba
+
+	Vector3 botSlope = Vector3Subtract(forward, Vector3Scale(up, halfHeight));
+	frustum.planes[2].normal = Vector3Normalize(Vector3CrossProduct(right, botSlope));// plano abajo
+
+	Vector3 leftSlope = Vector3Subtract(forward, Vector3Scale(right, halfWidth));
+	frustum.planes[0].normal = Vector3Normalize(Vector3CrossProduct(leftSlope, up));// plano izquierda
+
+	Vector3 rightSlope = Vector3Add(forward, Vector3Scale(right, halfWidth));
+	frustum.planes[1].normal = Vector3Normalize(Vector3CrossProduct(up, rightSlope));// plano derecha
+
+	frustum.planes[4].normal = forward;// plano near
+	frustum.planes[5].normal = Vector3Negate(forward); // plano far
+
+	frustum.planes[0].distance = -Vector3DotProduct(frustum.planes[0].normal, camera.position);
+	frustum.planes[1].distance = -Vector3DotProduct(frustum.planes[1].normal, camera.position);
+	frustum.planes[2].distance = -Vector3DotProduct(frustum.planes[2].normal, camera.position);
+	frustum.planes[3].distance = -Vector3DotProduct(frustum.planes[3].normal, camera.position);
+
+	Vector3 nearCenter = Vector3Add(camera.position, Vector3Scale(forward, nearDist));
+	Vector3 farCenter = Vector3Add(camera.position, Vector3Scale(forward, farDist));
+
+	frustum.planes[4].distance = -Vector3DotProduct(frustum.planes[4].normal, nearCenter);
+	frustum.planes[5].distance = -Vector3DotProduct(frustum.planes[5].normal, farCenter);
 }
 
 MyAABB CalculateLocalAABB(Mesh mesh)
@@ -204,12 +282,7 @@ MyAABB CalculateLocalAABB(Mesh mesh)
 
 	for (int i = 1; i < mesh.vertexCount; i++)
 	{
-		Vector3 v =
-		{
-			mesh.vertices[i * 3 + 0],
-			mesh.vertices[i * 3 + 1],
-			mesh.vertices[i * 3 + 2]
-		};
+		Vector3 v = { mesh.vertices[i * 3 + 0], mesh.vertices[i * 3 + 1], mesh.vertices[i * 3 + 2] };
 
 		aabb.min.x = fminf(aabb.min.x, v.x);
 		aabb.min.y = fminf(aabb.min.y, v.y);
@@ -255,93 +328,9 @@ MyAABB GetUpdatedAABB(MyAABB localBB, Matrix transform)
 	return { min, max };
 }
 
-void NormalizePlane(Plane* plane)
+void DrawAABB(MyAABB aabb, Color color)
 {
-	float length = Vector3Length(plane->normal);
-
-	if (length == 0.0f)
-	{
-		return;
-	}
-
-	plane->normal.x /= length;
-	plane->normal.y /= length;
-	plane->normal.z /= length;
-	plane->distance /= length;
-}
-
-void ExtractFrustumPlanes(Frustum* frustum, Matrix viewProjection)
-{
-	Matrix viewMatrix = viewProjection;
-
-	//left
-	frustum->planes[0].normal.x = viewMatrix.m3 + viewMatrix.m0;
-	frustum->planes[0].normal.y = viewMatrix.m7 + viewMatrix.m4;
-	frustum->planes[0].normal.z = viewMatrix.m11 + viewMatrix.m8;
-	frustum->planes[0].distance = viewMatrix.m15 + viewMatrix.m12;
-
-	//right
-	frustum->planes[1].normal.x = viewMatrix.m3 - viewMatrix.m0;
-	frustum->planes[1].normal.y = viewMatrix.m7 - viewMatrix.m4;
-	frustum->planes[1].normal.z = viewMatrix.m11 - viewMatrix.m8;
-	frustum->planes[1].distance = viewMatrix.m15 - viewMatrix.m12;
-
-	//bottom
-	frustum->planes[2].normal.x = viewMatrix.m3 + viewMatrix.m1;
-	frustum->planes[2].normal.y = viewMatrix.m7 + viewMatrix.m5;
-	frustum->planes[2].normal.z = viewMatrix.m11 + viewMatrix.m9;
-	frustum->planes[2].distance = viewMatrix.m15 + viewMatrix.m13;
-
-	//top
-	frustum->planes[3].normal.x = viewMatrix.m3 - viewMatrix.m1;
-	frustum->planes[3].normal.y = viewMatrix.m7 - viewMatrix.m5;
-	frustum->planes[3].normal.z = viewMatrix.m11 - viewMatrix.m9;
-	frustum->planes[3].distance = viewMatrix.m15 - viewMatrix.m13;
-
-	//near
-	frustum->planes[4].normal.x = viewMatrix.m3 + viewMatrix.m2;
-	frustum->planes[4].normal.y = viewMatrix.m7 + viewMatrix.m6;
-	frustum->planes[4].normal.z = viewMatrix.m11 + viewMatrix.m10;
-	frustum->planes[4].distance = viewMatrix.m15 + viewMatrix.m14;
-
-	//far
-	frustum->planes[5].normal.x = viewMatrix.m3 - viewMatrix.m2;
-	frustum->planes[5].normal.y = viewMatrix.m7 - viewMatrix.m6;
-	frustum->planes[5].normal.z = viewMatrix.m11 - viewMatrix.m10;
-	frustum->planes[5].distance = viewMatrix.m15 - viewMatrix.m14;
-
-	for (int i = 0; i < 6; i++)
-	{
-		NormalizePlane(&frustum->planes[i]);
-	}
-}
-
-bool IsAABBInFrustum(Frustum& frustum, MyAABB& aabb)
-{
-	for (int i = 0; i < 6; i++)
-	{
-		Plane& plane = frustum.planes[i];
-
-		Vector3 positiveVertex = aabb.min;
-		if (plane.normal.x >= 0)
-		{
-			positiveVertex.x = aabb.max.x;
-		}
-
-		if (plane.normal.y >= 0)
-		{
-			positiveVertex.y = aabb.max.y;
-		}
-		if (plane.normal.z >= 0)
-		{
-			positiveVertex.z = aabb.max.z;
-		}
-
-		if (Vector3DotProduct(plane.normal, positiveVertex) + plane.distance < 0)
-		{
-			return false;
-		}
-	}
-
-	return true;
+	Vector3 size = { aabb.max.x - aabb.min.x, aabb.max.y - aabb.min.y, aabb.max.z - aabb.min.z };
+	Vector3 center = { aabb.min.x + size.x * 0.5f, aabb.min.y + size.y * 0.5f, aabb.min.z + size.z * 0.5f };
+	DrawCubeWiresV(center, size, color);
 }
