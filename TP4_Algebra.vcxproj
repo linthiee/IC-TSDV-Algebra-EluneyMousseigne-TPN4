@@ -148,6 +148,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\myMath.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\myMath.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
