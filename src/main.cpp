@@ -14,6 +14,10 @@ struct SceneObject
 
 void DrawAABB(MyAABB aabb, Color color);
 
+void drawHUD(int visibleCount, std::vector<SceneObject>& sceneObjects, Camera& camera, float nearPlane, float farPlane);
+
+void Draw(std::vector<SceneObject>& sceneObjects);
+
 int main()
 {
 	const int screenWidth = 1600;
@@ -118,35 +122,11 @@ int main()
 
 		DrawGrid(100, 1.0f);
 
-		for (int i = 0; i < sceneObjects.size(); i++)
-		{
-			Matrix matTranslate = MatrixTranslate(sceneObjects[i].position.x, sceneObjects[i].position.y, sceneObjects[i].position.z);
-			MyAABB worldAABB = GetUpdatedAABB(sceneObjects[i].aabb, matTranslate);
-
-			if (sceneObjects[i].isVisible)
-			{
-				DrawModel(sceneObjects[i].model, sceneObjects[i].position, 1.0f, RED);
-				DrawModelWires(sceneObjects[i].model, sceneObjects[i].position, 1.0f, MAROON);
-				DrawAABB(worldAABB, BLUE);
-			}
-			else
-			{
-				DrawModelWires(sceneObjects[i].model, sceneObjects[i].position, 1.0f, LIGHTGRAY);
-				DrawAABB(worldAABB, GRAY);
-			}
-		}
+		Draw(sceneObjects);
 
 		EndMode3D();
 
-		DrawText(TextFormat("Visible objects: %d/%d", visibleCount, sceneObjects.size()), 10, 10, 20, BLACK);
-		DrawText("WASD to Move, Mouse to Look, Q/E to Change FOV", 10, 35, 15, DARKGRAY);
-		DrawText("R/F to Change NearPlane, T/G to Change FarPlane", 10, 55, 15, DARKGRAY);
-
-		DrawText("FOV:", 10, 80, 15, DARKGRAY);
-		DrawText(TextFormat("%s", std::to_string((int)camera.fovy).c_str()), 50, 80, 15, BLACK);
-		DrawText("Planes:", 10, 95, 15, DARKGRAY);
-		DrawText(TextFormat("%s", std::to_string((int)nearPlane).c_str()), 10, 125, 15, BLACK);
-		DrawText(TextFormat("%s", std::to_string((int)farPlane).c_str()), 10, 150, 15, BLACK);
+		drawHUD(visibleCount, sceneObjects, camera, nearPlane, farPlane);
 
 		EndDrawing();
 	}
@@ -163,6 +143,41 @@ int main()
 	CloseWindow();
 
 	return 0;
+}
+
+void Draw(std::vector<SceneObject>& sceneObjects)
+{
+	for (int i = 0; i < sceneObjects.size(); i++)
+	{
+		Matrix matTranslate = MatrixTranslate(sceneObjects[i].position.x, sceneObjects[i].position.y, sceneObjects[i].position.z);
+		MyAABB worldAABB = GetUpdatedAABB(sceneObjects[i].aabb, matTranslate);
+
+		if (sceneObjects[i].isVisible)
+		{
+			DrawModel(sceneObjects[i].model, sceneObjects[i].position, 1.0f, RED);
+			DrawModelWires(sceneObjects[i].model, sceneObjects[i].position, 1.0f, MAROON);
+			DrawAABB(worldAABB, BLUE);
+		}
+		else
+		{
+			DrawModelWires(sceneObjects[i].model, sceneObjects[i].position, 1.0f, LIGHTGRAY);
+			DrawAABB(worldAABB, GRAY);
+		}
+	}
+}
+
+void drawHUD(int visibleCount, std::vector<SceneObject>& sceneObjects, Camera& camera, float nearPlane, float farPlane)
+{
+
+	DrawText(TextFormat("Visible objects: %d/%d", visibleCount, sceneObjects.size()), 10, 10, 20, BLACK);
+	DrawText("WASD to Move, Mouse to Look, Q/E to Change FOV", 10, 35, 15, DARKGRAY);
+	DrawText("R/F to Change NearPlane, T/G to Change FarPlane", 10, 55, 15, DARKGRAY);
+
+	DrawText("FOV:", 10, 80, 15, DARKGRAY);
+	DrawText(TextFormat("%s", std::to_string((int)camera.fovy).c_str()), 50, 80, 15, BLACK);
+	DrawText("Planes:", 10, 95, 15, DARKGRAY);
+	DrawText(TextFormat("%s", std::to_string((int)nearPlane).c_str()), 10, 125, 15, BLACK);
+	DrawText(TextFormat("%s", std::to_string((int)farPlane).c_str()), 10, 150, 15, BLACK);
 }
 
 void DrawAABB(MyAABB aabb, Color color)
