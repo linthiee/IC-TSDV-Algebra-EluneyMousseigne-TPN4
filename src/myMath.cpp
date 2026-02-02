@@ -46,7 +46,6 @@ bool IsAABBInFrustum(Frustum& frustum, MyAABB& aabb)
 bool IsMeshInFrustum(Frustum& frustum, Mesh mesh, Matrix transform)
 {
 	Vector3 currentVertex = { 0, 0, 0 };
-	std::vector<Vector3> alreadyChecked; //guardar vertuces ya chequeados
 
 	bool wasChecked = false;
 
@@ -65,19 +64,6 @@ bool IsMeshInFrustum(Frustum& frustum, Mesh mesh, Matrix transform)
 
 		currentVertex = Vector3Transform(currentVertex, transform);
 
-		for (int i = 0; i < alreadyChecked.size(); i++)
-		{
-			if (currentVertex.x == alreadyChecked[i].x && currentVertex.y == alreadyChecked[i].y && currentVertex.z == alreadyChecked[i].z)
-			{
-				wasChecked = true;
-			}
-		}
-
-		if (wasChecked)
-		{
-			break;
-		}
-
 		for (int i = 0; i < 6; i++) //recorrer todos los planos del frustum
 		{
 			if (Vector3DotProduct(frustum.planes[i].normal, currentVertex) + frustum.planes[i].distance < 0) //si el vertice esta afuera de siquiera un plano, continuar
@@ -86,9 +72,6 @@ bool IsMeshInFrustum(Frustum& frustum, Mesh mesh, Matrix transform)
 				break;
 			}
 		}
-
-		alreadyChecked.push_back(currentVertex);
-		std::cout << alreadyChecked.size() << "\n";
 
 		if (isInsideOfAllPlanes)
 		{
