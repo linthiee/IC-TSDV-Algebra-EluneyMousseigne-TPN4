@@ -21,6 +21,7 @@ struct MyAABB
 };
 
 bool IsAABBInFrustum(Frustum& frustum, MyAABB& aabb);
+bool IsMeshInFrustum(Frustum& frustum, Mesh mesh, Matrix transform);
 void UpdateFrustum(Frustum& frustum, Camera camera, float aspect, float nearDist, float farDist);
 MyAABB CalculateLocalAABB(Mesh mesh);
 MyAABB GetUpdatedAABB(MyAABB localBB, Matrix transform);

@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <cmath>
+#include <iostream>
 
 struct SceneObject
 {
@@ -45,13 +46,13 @@ int main()
 	obj1.aabb = CalculateLocalAABB(*obj1.model.meshes);
 	sceneObjects.push_back(obj1);
 
-	SceneObject obj2;
-	obj2.model = LoadModel("res/dodecahedron.obj");
-	obj2.position = { 3.0f, 2.0f, 0.0f };
-	obj2.aabb = CalculateLocalAABB(*obj2.model.meshes);
-	sceneObjects.push_back(obj2);
+	//SceneObject obj2;
+	//obj2.model = LoadModel("res/dodecahedron.obj");
+	//obj2.position = { 3.0f, 2.0f, 0.0f };
+	//obj2.aabb = CalculateLocalAABB(*obj2.model.meshes);
+	//sceneObjects.push_back(obj2);
 
-	for (int i = 0; i < 50; i++)
+	for (int i = 0; i < 0; i++)
 	{
 		SceneObject objRand;
 		objRand.model = LoadModel("res/tetrahedron.obj");
@@ -107,11 +108,13 @@ int main()
 			Matrix matTranslate = MatrixTranslate(sceneObjects[i].position.x, sceneObjects[i].position.y, sceneObjects[i].position.z);
 			MyAABB worldAABB = GetUpdatedAABB(sceneObjects[i].aabb, matTranslate);
 
-			sceneObjects[i].isVisible = IsAABBInFrustum(cameraFrustum, worldAABB);
-
-			if (sceneObjects[i].isVisible)
+			if (IsAABBInFrustum(cameraFrustum, worldAABB))
 			{
-				visibleCount++;
+				if (IsMeshInFrustum(cameraFrustum, sceneObjects[i].model.meshes[0], matTranslate))
+				{
+					visibleCount++;
+					sceneObjects[i].isVisible = true;
+				}
 			}
 		}
 
@@ -134,7 +137,7 @@ int main()
 	for (int i = 0; i < sceneObjects.size() - 1; i++)
 	{
 		SceneObject& obj = sceneObjects[i];
-		if (IsModelValid(obj.model)) 
+		if (IsModelValid(obj.model))
 		{
 			UnloadModel(obj.model);
 		}
@@ -168,7 +171,6 @@ void Draw(std::vector<SceneObject>& sceneObjects)
 
 void drawHUD(int visibleCount, std::vector<SceneObject>& sceneObjects, Camera& camera, float nearPlane, float farPlane)
 {
-
 	DrawText(TextFormat("Visible objects: %d/%d", visibleCount, sceneObjects.size()), 10, 10, 20, BLACK);
 	DrawText("WASD to Move, Mouse to Look, Q/E to Change FOV", 10, 35, 15, DARKGRAY);
 	DrawText("R/F to Change NearPlane, T/G to Change FarPlane", 10, 55, 15, DARKGRAY);

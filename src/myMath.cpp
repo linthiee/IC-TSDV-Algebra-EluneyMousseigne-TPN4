@@ -1,4 +1,6 @@
 #include "myMath.h"
+#include <vector>
+#include <iostream>
 
 bool IsAABBInFrustum(Frustum& frustum, MyAABB& aabb)
 {
@@ -39,6 +41,61 @@ bool IsAABBInFrustum(Frustum& frustum, MyAABB& aabb)
 		}
 	}
 	return true;
+}
+
+bool IsMeshInFrustum(Frustum& frustum, Mesh mesh, Matrix transform)
+{
+	Vector3 currentVertex = { 0, 0, 0 };
+	std::vector<Vector3> alreadyChecked; //guardar vertuces ya chequeados
+
+	bool wasChecked = false;
+
+	for (int j = 0; j < mesh.vertexCount; j++) //recorrer todos los vertices de la mesh (3 conjuntos x y z por vertex)
+	{
+		wasChecked = false;
+
+		bool isInsideOfAllPlanes = true;
+
+		currentVertex = { 0, 0, 0 };
+
+		//guardar vertice actual de tal forma para ir agarrando de 3 en 3 (dividir la lista original en otras 3 partes)
+		currentVertex.x = mesh.vertices[j * 3 + 0];
+		currentVertex.y = mesh.vertices[j * 3 + 1];
+		currentVertex.z = mesh.vertices[j * 3 + 2];
+
+		currentVertex = Vector3Transform(currentVertex, transform);
+
+		for (int i = 0; i < alreadyChecked.size(); i++)
+		{
+			if (currentVertex.x == alreadyChecked[i].x && currentVertex.y == alreadyChecked[i].y && currentVertex.z == alreadyChecked[i].z)
+			{
+				wasChecked = true;
+			}
+		}
+
+		if (wasChecked)
+		{
+			break;
+		}
+
+		for (int i = 0; i < 6; i++) //recorrer todos los planos del frustum
+		{
+			if (Vector3DotProduct(frustum.planes[i].normal, currentVertex) + frustum.planes[i].distance < 0) //si el vertice esta afuera de siquiera un plano, continuar
+			{
+				isInsideOfAllPlanes = false;
+				break;
+			}
+		}
+
+		alreadyChecked.push_back(currentVertex);
+		std::cout << alreadyChecked.size() << "\n";
+
+		if (isInsideOfAllPlanes)
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 void UpdateFrustum(Frustum& frustum, Camera camera, float aspect, float nearDist, float farDist)
