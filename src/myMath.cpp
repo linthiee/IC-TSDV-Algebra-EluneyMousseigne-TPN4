@@ -91,7 +91,7 @@ void UpdateFrustum(Frustum& frustum, Camera camera, float aspect, float nearDist
 
 	Vector3 up = Vector3CrossProduct(right, forward);
 
-	float halfHeight = tanf(camera.fovy * 0.5f * DEG2RAD);
+	float halfHeight = tanf(camera.fovy * 0.5f * DEG2RAD); //se asume 1 como cateto adyacente para simplificar ya que el numero resultante es una pendiente (ratio)
 	float halfWidth = halfHeight * aspect;
 
 	Vector3 topSlope = Vector3Add(forward, Vector3Scale(up, halfHeight));
