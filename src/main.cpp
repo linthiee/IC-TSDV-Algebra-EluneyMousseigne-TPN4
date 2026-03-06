@@ -52,12 +52,13 @@ int main()
 	//obj2.aabb = CalculateLocalAABB(*obj2.model.meshes);
 	//sceneObjects.push_back(obj2);
 
-	for (int i = 0; i < 0; i++)
+	for (int i = 0; i < 20; i++)
 	{
 		SceneObject objRand;
 		objRand.model = LoadModel("res/tetrahedron.obj");
 		objRand.position = { (float)(GetRandomValue(-50, 50)), 0.0f, (float)(GetRandomValue(-50, 50)) };
 		objRand.aabb = CalculateLocalAABB(*objRand.model.meshes);
+		objRand.isVisible = false;
 		sceneObjects.push_back(objRand);
 	}
 
@@ -102,6 +103,7 @@ int main()
 		UpdateFrustum(cameraFrustum, camera, aspectRatio, nearPlane, farPlane);
 
 		int visibleCount = 0;
+		int visibleCountAABB = 0;
 
 		for (int i = 0; i < sceneObjects.size(); i++)
 		{
@@ -110,13 +112,24 @@ int main()
 
 			if (IsAABBInFrustum(cameraFrustum, worldAABB))
 			{
+				visibleCountAABB++;
 				if (IsMeshInFrustum(cameraFrustum, sceneObjects[i].model.meshes[0], matTranslate))
 				{
 					visibleCount++;
 					sceneObjects[i].isVisible = true;
 				}
+				else
+				{
+					sceneObjects[i].isVisible = false;
+				}
 			}
 		}
+
+		if (IsKeyPressed(KEY_M))
+		std::cout << visibleCountAABB << "\n\n";
+
+		if (IsKeyPressed(KEY_O))
+		std::cout << visibleCount << "\n\n";
 
 		BeginDrawing();
 		ClearBackground(RAYWHITE);
